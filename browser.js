@@ -6,7 +6,7 @@ var ec = new EC("secp256k1");
 var browserCrypto = global.crypto || global.msCrypto || {};
 var subtle = browserCrypto.subtle || browserCrypto.webkitSubtle;
 
-var nodeCrypto = require('crypto');
+var nodeCrypto = require('crypto-browserify');
 
 const EC_GROUP_ORDER = Buffer.from('fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141', 'hex');
 const ZERO32 = Buffer.alloc(32, 0);
@@ -17,17 +17,16 @@ function assert(condition, message) {
   }
 }
 
-function isScalar (x) {
+function isScalar(x) {
   return Buffer.isBuffer(x) && x.length === 32;
 }
 
 function isValidPrivateKey(privateKey) {
-  if (!isScalar(privateKey))
-  {
+  if (!isScalar(privateKey)) {
     return false;
   }
   return privateKey.compare(ZERO32) > 0 && // > 0
-  privateKey.compare(EC_GROUP_ORDER) < 0; // < G
+    privateKey.compare(EC_GROUP_ORDER) < 0; // < G
 }
 
 // Compare two buffers in constant time to prevent timing attacks.
@@ -67,10 +66,10 @@ function getAes(op) {
   return function(iv, key, data) {
     return new Promise(function(resolve) {
       if (subtle) {
-        var importAlgorithm = {name: "AES-CBC"};
+        var importAlgorithm = { name: "AES-CBC" };
         var keyp = subtle.importKey("raw", key, importAlgorithm, false, [op]);
         return keyp.then(function(cryptoKey) {
-          var encAlgorithm = {name: "AES-CBC", iv: iv};
+          var encAlgorithm = { name: "AES-CBC", iv: iv };
           return subtle[op](encAlgorithm, cryptoKey, data);
         }).then(function(result) {
           resolve(Buffer.from(new Uint8Array(result)));
@@ -120,7 +119,7 @@ function hmacSha256Verify(key, msg, sig) {
   * @return {Buffer} A 32-byte private key.
   * @function
   */
-exports.generatePrivate = function () {
+exports.generatePrivate = function() {
   var privateKey = randomBytes(32);
   while (!isValidPrivateKey(privateKey)) {
     privateKey = randomBytes(32);
@@ -159,19 +158,17 @@ exports.sign = function(privateKey, msg) {
     assert(isValidPrivateKey(privateKey), "Bad private key");
     assert(msg.length > 0, "Message should not be empty");
     assert(msg.length <= 32, "Message is too long");
-    resolve(Buffer.from(ec.sign(msg, privateKey, {canonical: true}).toDER()));
+    resolve(Buffer.from(ec.sign(msg, privateKey, { canonical: true }).toDER()));
   });
 };
 
 exports.verify = function(publicKey, msg, sig) {
   return new Promise(function(resolve, reject) {
     assert(publicKey.length === 65 || publicKey.length === 33, "Bad public key");
-    if (publicKey.length === 65)
-    {
+    if (publicKey.length === 65) {
       assert(publicKey[0] === 4, "Bad public key");
     }
-    if (publicKey.length === 33)
-    {
+    if (publicKey.length === 33) {
       assert(publicKey[0] === 2 || publicKey[0] === 3, "Bad public key");
     }
     assert(msg.length > 0, "Message should not be empty");
@@ -191,12 +188,10 @@ var derive = exports.derive = function(privateKeyA, publicKeyB) {
     assert(privateKeyA.length === 32, "Bad private key");
     assert(isValidPrivateKey(privateKeyA), "Bad private key");
     assert(publicKeyB.length === 65 || publicKeyB.length === 33, "Bad public key");
-    if (publicKeyB.length === 65)
-    {
+    if (publicKeyB.length === 65) {
       assert(publicKeyB[0] === 4, "Bad public key");
     }
-    if (publicKeyB.length === 33)
-    {
+    if (publicKeyB.length === 33) {
       assert(publicKeyB[0] === 2 || publicKeyB[0] === 3, "Bad public key");
     }
     var keyA = ec.keyFromPrivate(privateKeyA);
@@ -213,8 +208,7 @@ exports.encrypt = function(publicKeyTo, msg, opts) {
   return new Promise(function(resolve) {
     var ephemPrivateKey = opts.ephemPrivateKey || randomBytes(32);
     // There is a very unlikely possibility that it is not a valid key
-    while(!isValidPrivateKey(ephemPrivateKey))
-    {
+    while (!isValidPrivateKey(ephemPrivateKey)) {
       ephemPrivateKey = opts.ephemPrivateKey || randomBytes(32);
     }
     ephemPublicKey = getPublic(ephemPrivateKey);
